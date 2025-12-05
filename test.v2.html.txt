@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetApp 디스크 사이징 계산기 (Right-Sized 적용)</title>
+<style>
+    /* 기존 스타일 유지 */
+    *{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#eff6ff 0%,#e0e7ff 100%);min-height:100vh;padding:24px}.container{max-width:1200px;margin:0 auto}.card{background:white;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.1);padding:32px;margin-bottom:24px}.header{display:flex;align-items:center;gap:12px;margin-bottom:24px}.header svg{width:32px;height:32px;color:#2563eb}.header h1{font-size:28px;font-weight:bold;color:#1f2937}.section-title{font-size:18px;font-weight:600;color:#1f2937;margin:24px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e5e7eb}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-bottom:24px}.form-group{display:flex;flex-direction:column}.form-group label{font-size:14px;font-weight:500;color:#374151;margin-bottom:8px}.form-group input,.form-group select{padding:10px 16px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;transition:all .2s}.form-group input:focus,.form-group select:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}.btn{padding:12px 24px;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}.btn-primary{background:#2563eb;color:white;width:100%}.btn-primary:hover{background:#1d4ed8}.btn-success{background:#16a34a;color:white}.btn-success:hover{background:#15803d}.btn-secondary{background:#6366f1;color:white}.btn-secondary:hover{background:#4f46e5}.result-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px}.result-header h2{font-size:24px;font-weight:bold;color:#1f2937}.button-group{display:flex;gap:8px}.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}.result-card{padding:16px;border-radius:8px}.result-card-label{font-size:14px;color:#6b7280;margin-bottom:4px}.result-card-value{font-size:28px;font-weight:bold}.bg-blue{background:#dbeafe}.text-blue{color:#2563eb}.bg-green{background:#dcfce7}.text-green{color:#16a34a}.bg-yellow{background:#fef3c7}.text-yellow{color:#d97706}.bg-purple{background:#f3e8ff}.text-purple{color:#9333ea}.bg-indigo{background:#e0e7ff}.text-indigo{color:#6366f1}.bg-pink{background:#fce7f3}.text-pink{color:#db2777}.bg-orange{background:#fed7aa}.text-orange{color:#ea580c}.bg-gray{background:#f3f4f6}.text-gray{color:#4b5563}.detail-section{border-top:1px solid #e5e7eb;padding-top:24px}.detail-section h3{font-size:20px;font-weight:bold;color:#1f2937;margin-bottom:16px}.detail-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #e5e7eb}.detail-row:last-child{border-bottom:none}.detail-label{color:#6b7280}.detail-value{font-weight:600}.alert{margin-top:24px;background:#dbeafe;border-left:4px solid #2563eb;padding:16px;border-radius:8px;display:flex;gap:8px}.alert.alert-warning{background:#fef3c7;border-left-color:#d97706}.alert svg{width:20px;height:20px;color:#2563eb;flex-shrink:0;margin-top:2px}.alert.alert-warning svg{color:#d97706}.alert-content{color:#1e3a8a;font-size:14px}.alert.alert-warning .alert-content{color:#78350f}.alert-title{font-weight:600;margin-bottom:4px}.alert ul{list-style:disc;padding-left:20px}.alert li{margin:4px 0}.hidden{display:none}.saved-config{padding:16px;background:#f9fafb;border-radius:8px;cursor:pointer;transition:all .2s;margin-bottom:8px}.saved-config:hover{background:#f3f4f6}.saved-config-name{font-weight:600;color:#1f2937;margin-bottom:4px}.saved-config-details{font-size:14px;color:#6b7280}.icon{width:16px;height:16px}@media (max-width:768px){body{padding:16px}.card{padding:20px}.grid{grid-template-columns:1fr}.result-grid{grid-template-columns:1fr}.header h1{font-size:22px}.button-group{width:100%;flex-wrap:wrap}.btn{flex:1;min-width:120px}}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="header">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/></svg>
+            <h1>NetApp 스토리지 디스크 사이징 계산기 (Right-Sized)</h1>
+        </div>
+        
+        <div class="section-title">기본 구성</div>
+        <div class="grid">
+            <div class="form-group">
+                <label>목표 실 사용 가능 용량 (TiB)</label>
+                <input type="number" id="targetCapacity" value="10" placeholder="예: 50">
+            </div>
+            <div class="form-group">
+                <label>RAID 타입</label>
+                <select id="raidType">
+                    <option value="RAID-DP">RAID-DP (2-패리티)</option>
+                    <option value="RAID-TEC">RAID-TEC (3-패리티)</option>
+                    <option value="RAID4">RAID4 (1-패리티)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>디스크 타입</label>
+                <select id="diskType">
+                    <option value="SAS">SAS</option>
+                    <option value="NL-SAS">NL-SAS</option>
+                    <option value="SSD">SSD</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>디스크 크기 (TB)</label>
+                <select id="diskSize">
+                    </select>
+            </div>
+            <div class="form-group">
+                <label>노드 수 (HA Pair)</label>
+                <input type="number" id="nodeCount" value="2" min="2" step="2">
+            </div>
+            <div class="form-group">
+                <label>Aggregate 수</label>
+                <input type="number" id="aggregateCount" value="2" min="1">
+            </div>
+            <div class="form-group">
+                <label>스페어 디스크 수 (개)</label>
+                <input type="number" id="spareDisks" value="2" min="0">
+            </div>
+        </div>
+
+        <div class="section-title">Aggregate & RAID 제약사항</div>
+        <div class="grid">
+            <div class="form-group">
+                <label>Aggregate 최소 디스크 수</label>
+                <input type="number" id="aggrMinDisks" value="8" min="1">
+            </div>
+            <div class="form-group">
+                <label>Aggregate 최대 디스크 수</label>
+                <input type="number" id="aggrMaxDisks" value="200" min="1">
+            </div>
+            <div class="form-group">
+                <label>최대 RAID 그룹 크기</label>
+                <input type="number" id="maxRaidGroupSize" value="26" min="3" max="28">
+            </div>
+        </div>
+
+        <div class="section-title">스토리지 효율성</div>
+        <div class="grid">
+            <div class="form-group">
+                <label>스냅샷 예약 공간 (%)</label>
+                <input type="number" id="snapshotReserve" value="0" min="0" max="50">
+            </div>
+            <div class="form-group">
+                <label>중복제거 비율 (배수)</label>
+                <input type="number" id="dedupeRatio" value="1" min="1" max="10" step="0.1">
+            </div>
+            <div class="form-group">
+                <label>압축 비율 (배수)</label>
+                <input type="number" id="compressionRatio" value="1" min="1" max="10" step="0.1">
+            </div>
+            <div class="form-group">
+                <label>시스템 오버헤드 (WAFL 등, %)</label>
+                <input type="number" id="overheadPercent" value="10" min="0" max="20">
+            </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="calculateSizing()">사이징 계산하기</button>
+    </div>
+
+    <div id="results" class="card hidden">
+        <div class="result-header">
+            <h2>계산 결과</h2>
+            <div class="button-group">
+                <button class="btn btn-success" onclick="saveConfig()">
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>저장
+                </button>
+                <button class="btn btn-secondary" onclick="exportResults()">
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>내보내기
+                </button>
+            </div>
+        </div>
+        
+        <div id="warnings"></div>
+        <div id="resultCards" class="result-grid"></div>
+        
+        <div class="detail-section">
+            <h3>상세 구성</h3>
+            <div id="detailResults"></div>
+        </div>
+
+        <div class="alert">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="alert-content">
+                <div class="alert-title">Right-Sized 용량 적용됨</div>
+                <ul>
+                    <li>이 계산기는 제조사의 10진수 용량(TB) 대신 실제 파일시스템이 인식하는 2진수 용량(TiB)을 기준으로 계산합니다.</li>
+                    <li><strong>실 사용 가능 용량</strong>은 패리티, 스페어, WAFL 오버헤드, 스냅샷 예약 공간을 모두 제외한 후 실제 데이터가 저장될 수 있는 공간입니다.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="savedConfigsSection" class="card hidden">
+        <h2>저장된 구성</h2>
+        <div id="savedConfigsList" style="margin-top:16px"></div>
+    </div>
+</div>
+
+<script>
+// NetApp 디스크 별 실제 사용 가능 용량 (Right-Size) 매핑 테이블 (단위: TiB)
+const netappRightSizes = {
+    // SSD
+    "1.92": 1.74,
+    "3.84": 3.49,
+    "7.6": 6.98,
+    "15.3": 13.97,
+    "30.7": 27.94,
+    "61.4": 56.55,
+    // SAS
+    "1.2": 1.09,
+    "1.8": 1.63, 
+    // NL-SAS
+    "4": 3.63,
+    "10": 9.08,
+    "16": 14.55,
+    "22": 20.01
+};
+
+const diskOptions = {
+    'SAS': [1.8],
+    'NL-SAS': [4, 10, 16, 22],
+    'SSD': [1.92, 3.84, 7.6, 15.3, 30.7, 61.4]
+};
+
+const raidConfigs = {
+    'RAID-DP': { minDisks: 5, parity: 2 },
+    'RAID-TEC': { minDisks: 7, parity: 3 },
+    'RAID4': { minDisks: 3, parity: 1 }
+};
+
+let savedConfigs = [];
+let currentResults = null;
+
+// 마케팅 용량(TB)을 입력받아 실제 사용 가능 용량(Right-Sized TiB)을 반환하는 함수
+function getRightSizedCapacity(diskSize) {
+    const sizeStr = diskSize.toString();
+    // 1. 매핑 테이블에 정확한 값이 있는지 확인
+    if (netappRightSizes[sizeStr]) {
+        return netappRightSizes[sizeStr];
+    }
+    // 2. 매핑 값이 없는 경우 일반적인 변환 공식 적용 (Base10 -> Base2 변환 계수 + 오버헤드)
+    return parseFloat((diskSize * 0.909).toFixed(2));
+}
+
+function updateDiskSizes() {
+    const type = document.getElementById("diskType").value;
+    const sizeSelect = document.getElementById("diskSize");
+    sizeSelect.innerHTML = "";
+    
+    diskOptions[type].forEach(size => {
+        const rightSize = getRightSizedCapacity(size);
+        const option = document.createElement("option");
+        option.value = size;
+        // UI에 마케팅 용량과 Right-Size를 함께 표시
+        option.textContent = `${size} TB (실제: ${rightSize} TiB)`; 
+        sizeSelect.appendChild(option);
+    });
+    
+    updateRecommendedRaidGroupSize();
+}
+
+function updateRecommendedRaidGroupSize() {
+    const diskType = document.getElementById("diskType").value;
+    const raidType = document.getElementById("raidType").value;
+    const rgInput = document.getElementById("maxRaidGroupSize");
+    
+    let recommended;
+    if (diskType === 'SSD') {
+        recommended = 26; // SSD는 보통 크게 잡음
+    } else if (diskType === 'SAS') {
+        recommended = 18;
+    } else if (diskType === 'NL-SAS') {
+        recommended = (raidType === 'RAID-TEC') ? 28 : 16;
+    }
+    
+    if (!rgInput.dataset.userModified) {
+        rgInput.value = recommended;
+    }
+}
+
+document.getElementById("diskType").addEventListener("change", updateDiskSizes);
+document.getElementById("raidType").addEventListener("change", updateRecommendedRaidGroupSize);
+document.getElementById("maxRaidGroupSize").addEventListener("input", function() {
+    this.dataset.userModified = "true";
+});
+
+function calculateSizing() {
+    // 1. 입력값 가져오기
+    const rawDiskSize = parseFloat(document.getElementById("diskSize").value);
+    const realDiskSize = getRightSizedCapacity(rawDiskSize); // 실제 계산용 용량
+
+    const inputs = {
+        targetCapacity: parseFloat(document.getElementById("targetCapacity").value),
+        raidType: document.getElementById("raidType").value,
+        diskType: document.getElementById("diskType").value,
+        diskSize: rawDiskSize,     // 표기용
+        realDiskSize: realDiskSize, // 계산용
+        nodeCount: parseInt(document.getElementById("nodeCount").value),
+        aggregateCount: parseInt(document.getElementById("aggregateCount").value),
+        spareDisks: parseInt(document.getElementById("spareDisks").value),
+        snapshotReserve: parseFloat(document.getElementById("snapshotReserve").value) / 100,
+        dedupeRatio: parseFloat(document.getElementById("dedupeRatio").value),
+        compressionRatio: parseFloat(document.getElementById("compressionRatio").value),
+        overheadPercent: parseFloat(document.getElementById("overheadPercent").value) / 100,
+        aggrMinDisks: parseInt(document.getElementById("aggrMinDisks").value),
+        aggrMaxDisks: parseInt(document.getElementById("aggrMaxDisks").value),
+        maxRaidGroupSize: parseInt(document.getElementById("maxRaidGroupSize").value)
+    };
+
+    const raidConfig = raidConfigs[inputs.raidType];
+    const warnings = [];
+
+    const rootDisks = inputs.nodeCount * 3; // Root 볼륨용 디스크 (보통 3개/노드)
+    
+    // --- 1. 목표 용량 달성을 위한 데이터 디스크 수 역산 ---
+    // 목표 용량(TiB) / (1-스냅샷) / (1-오버헤드) = 필요한 물리 데이터 공간
+    // 그 공간 / 개당 RightSize = 필요한 데이터 디스크 수
+    
+    const neededPhysicalDataSpace = inputs.targetCapacity / (1 - inputs.snapshotReserve) / (1 - inputs.overheadPercent);
+    let totalDataDisksNeeded = Math.ceil(neededPhysicalDataSpace / inputs.realDiskSize);
+    
+    // Aggregate 분배 및 RAID Parity 추가
+    // 각 Aggregate에 데이터 디스크를 균등 분배하되, RAID Parity 고려
+    
+    // 임시: Aggregate당 데이터 디스크 수
+    let dataDisksPerAggr = Math.ceil(totalDataDisksNeeded / inputs.aggregateCount);
+    
+    // RAID Parity 비율 추정하여 총 디스크 수 보정 (순환 계산 필요하지만 약식으로 계산)
+    // 데이터 디스크 N개당 Parity P개가 추가됨.
+    // RG size가 M일 때, 효율은 (M-P)/M.
+    // 필요 총 디스크(데이터+패리티) ≈ 필요 데이터 디스크 / 효율
+    
+    const estimatedEfficiency = (inputs.maxRaidGroupSize - raidConfig.parity) / inputs.maxRaidGroupSize;
+    let rawDisksPerAggr = Math.ceil(dataDisksPerAggr / estimatedEfficiency);
+
+    // 최소/최대 디스크 수 제약 확인
+    if (rawDisksPerAggr < inputs.aggrMinDisks) {
+        rawDisksPerAggr = inputs.aggrMinDisks;
+        warnings.push(`Aggregate당 디스크 수가 최소값(${inputs.aggrMinDisks}개)보다 적어서 자동으로 조정되었습니다.`);
+    }
+    if (rawDisksPerAggr > inputs.aggrMaxDisks) {
+        warnings.push(`⚠️ Aggregate당 디스크 수(${rawDisksPerAggr}개)가 최대값(${inputs.aggrMaxDisks}개)을 초과합니다. Aggregate 수를 늘려야 합니다.`);
+        rawDisksPerAggr = inputs.aggrMaxDisks;
+    }
+
+    // RAID 그룹 구성 계산
+    // 최대한 Max RG Size에 맞추되 균등 분배
+    const raidGroupsPerAggr = Math.ceil(rawDisksPerAggr / inputs.maxRaidGroupSize);
+    const disksPerRaidGroup = Math.ceil(rawDisksPerAggr / raidGroupsPerAggr); // 균등 분배된 RG 크기
+    
+    // RG 크기 최소값 체크
+    if (disksPerRaidGroup < raidConfig.minDisks) {
+        warnings.push(`⚠️ RAID 그룹 크기(${disksPerRaidGroup}개)가 ${inputs.raidType}의 최소 요구사항(${raidConfig.minDisks}개)보다 작습니다.`);
+    }
+
+    // 최종 확정된 디스크 수
+    const actualDisksPerAggr = disksPerRaidGroup * raidGroupsPerAggr;
+    const totalAggrDisks = actualDisksPerAggr * inputs.aggregateCount;
+    const totalDisks = totalAggrDisks + inputs.spareDisks + rootDisks;
+
+    // --- 2. 확정된 디스크 수로 용량 정방향 계산 (Right-Size 기준) ---
+    
+    const marketRawCapacity = totalDisks * inputs.diskSize; // 마케팅 용량
+    const rightSizedRawCapacity = totalDisks * inputs.realDiskSize; // 실제 물리 용량 (TiB)
+
+    // 데이터 디스크 수 (패리티 제외)
+    const dataDisksPerGroup = disksPerRaidGroup - raidConfig.parity;
+    const dataDisksTotal = dataDisksPerGroup * raidGroupsPerAggr * inputs.aggregateCount;
+    
+    // RAID 효율
+    const raidEfficiency = dataDisksPerGroup / disksPerRaidGroup;
+    
+    // Usable Calculation
+    // 1. 순수 데이터 디스크 용량 (Right-Size 기준)
+    const rawUsable = dataDisksTotal * inputs.realDiskSize;
+    
+    // 2. 오버헤드(WAFL) 차감
+    const usableAfterOverhead = rawUsable * (1 - inputs.overheadPercent);
+    
+    // 3. 스냅샷 예약 차감 -> 최종 Available
+    const available = usableAfterOverhead * (1 - inputs.snapshotReserve);
+    
+    // 4. 논리적 용량
+    const logical = available * inputs.dedupeRatio * inputs.compressionRatio;
+
+    currentResults = {
+        inputs: inputs,
+        warnings: warnings,
+        totalDisks: totalDisks,
+        rootDisks: rootDisks,
+        spareDisks: inputs.spareDisks,
+        dataDisks: dataDisksTotal, // 순수 데이터 디스크 수
+        parityDisks: (totalAggrDisks - dataDisksTotal), // 패리티 디스크 수
+        aggregates: inputs.aggregateCount,
+        disksPerAggregate: actualDisksPerAggr,
+        raidGroupsPerAggregate: raidGroupsPerAggr,
+        disksPerRaidGroup: disksPerRaidGroup,
+        
+        // 결과값
+        actualRawCapacity: marketRawCapacity.toFixed(2), // TB
+        rightSizedRawCapacity: rightSizedRawCapacity.toFixed(2), // TiB
+        usableCapacity: usableAfterOverhead.toFixed(2), // TiB
+        availableCapacity: available.toFixed(2), // TiB
+        logicalCapacity: logical.toFixed(2), // TiB
+        
+        raidEfficiency: (raidEfficiency * 100).toFixed(1),
+        overallEfficiency: (available / marketRawCapacity * 100).toFixed(1) // 마케팅 용량 대비 실가용 효율
+    };
+
+    displayResults(currentResults);
+}
+
+function displayResults(res) {
+    document.getElementById("results").classList.remove("hidden");
+    
+    const warningsContainer = document.getElementById("warnings");
+    warningsContainer.innerHTML = res.warnings.length > 0 
+        ? res.warnings.map(w => `
+            <div class="alert alert-warning" style="margin-bottom: 16px;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <div class="alert-content"><div class="alert-title">경고</div><div>${w}</div></div>
+            </div>`).join("") 
+        : "";
+
+    const cards = [
+        { label: "총 디스크 수", value: `${res.totalDisks}개`, bgColor: "bg-blue", textColor: "text-blue" },
+        { label: "데이터 디스크 (패리티 제외)", value: `${res.dataDisks}개`, bgColor: "bg-green", textColor: "text-green" },
+        { label: "Right-Sized Raw (TiB)", value: `${res.rightSizedRawCapacity} TiB`, bgColor: "bg-gray", textColor: "text-gray" },
+        { label: "실 사용 가능 용량 (Available)", value: `${res.availableCapacity} TiB`, bgColor: "bg-indigo", textColor: "text-indigo" },
+        { label: "마케팅 Raw 용량 (TB)", value: `${res.actualRawCapacity} TB`, bgColor: "bg-purple", textColor: "text-purple" },
+        { label: "논리적 용량 (Logical)", value: `${res.logicalCapacity} TiB`, bgColor: "bg-pink", textColor: "text-pink" }
+    ];
+
+    document.getElementById("resultCards").innerHTML = cards.map(c => `
+        <div class="result-card ${c.bgColor}">
+            <div class="result-card-label">${c.label}</div>
+            <div class="result-card-value ${c.textColor}">${c.value}</div>
+        </div>
+    `).join("");
+
+    const details = [
+        { label: "노드 / Aggregate", value: `${res.inputs.nodeCount} 노드 / ${res.aggregates} Aggregate`, highlight: false },
+        { label: "Aggregate 구성", value: `${res.disksPerAggregate} 디스크 (${res.raidGroupsPerAggregate} RG x ${res.disksPerRaidGroup} 디스크)`, highlight: false },
+        { label: "패리티 / 스페어 / Root", value: `${res.parityDisks}개 / ${res.spareDisks}개 / ${res.rootDisks}개`, highlight: false },
+        { label: "RAID 효율성", value: `${res.raidEfficiency}%`, highlight: false },
+        { label: "전체 효율성 (Marketing Raw 대비)", value: `${res.overallEfficiency}%`, highlight: true }
+    ];
+
+    document.getElementById("detailResults").innerHTML = details.map(d => `
+        <div class="detail-row">
+            <span class="detail-label">${d.label}</span>
+            <span class="detail-value ${d.highlight ? 'text-green' : ''}">${d.value}</span>
+        </div>
+    `).join("");
+
+    document.getElementById("results").scrollIntoView({ behavior: 'smooth' });
+}
+
+function saveConfig() {
+    if (!currentResults) return;
+    const config = {
+        name: `Config ${new Date().toLocaleString('ko-KR')}`,
+        data: currentResults
+    };
+    savedConfigs.push(config);
+    updateSavedConfigs();
+    alert("구성이 저장되었습니다!");
+}
+
+function updateSavedConfigs() {
+    const list = document.getElementById("savedConfigsList");
+    const section = document.getElementById("savedConfigsSection");
+    
+    if (savedConfigs.length === 0) {
+        section.classList.add("hidden");
+    } else {
+        section.classList.remove("hidden");
+        list.innerHTML = savedConfigs.map((c, i) => `
+            <div class="saved-config" onclick="loadSavedConfig(${i})">
+                <div class="saved-config-name">${c.name}</div>
+                <div class="saved-config-details">
+                    목표: ${c.data.inputs.targetCapacity}TiB / ${c.data.inputs.diskType} ${c.data.inputs.diskSize}TB / 총 ${c.data.totalDisks}개
+                </div>
+            </div>
+        `).join("");
+    }
+}
+
+function loadSavedConfig(index) {
+    currentResults = savedConfigs[index].data;
+    // UI 복원 로직이 추가로 필요할 수 있으나, 현재는 결과만 표시
+    displayResults(currentResults);
+}
+
+function exportResults() {
+    if (!currentResults) return;
+    
+    const text = `NetApp 스토리지 사이징 리포트 (Right-Sized 적용)
+생성일시: ${new Date().toLocaleString('ko-KR')}
+
+=== 입력 파라미터 ===
+목표 실 사용 용량: ${currentResults.inputs.targetCapacity} TiB
+RAID 타입: ${currentResults.inputs.raidType}
+디스크: ${currentResults.inputs.diskType} ${currentResults.inputs.diskSize} TB
+(Right-Sized 실제 용량: ${currentResults.inputs.realDiskSize} TiB)
+
+구성:
+- 노드: ${currentResults.inputs.nodeCount}개
+- Aggregate: ${currentResults.inputs.aggregateCount}개
+- 스페어: ${currentResults.inputs.spareDisks}개
+
+효율성 설정:
+- 스냅샷 예약: ${(currentResults.inputs.snapshotReserve * 100).toFixed(0)}%
+- 시스템 오버헤드: ${(currentResults.inputs.overheadPercent * 100).toFixed(0)}%
+- 중복제거/압축: ${currentResults.inputs.dedupeRatio}x / ${currentResults.inputs.compressionRatio}x
+
+=== 계산 결과 ===
+총 디스크 수: ${currentResults.totalDisks}개
+- 데이터 디스크: ${currentResults.dataDisks}개
+- 패리티 디스크: ${currentResults.parityDisks}개
+- Root/스페어: ${currentResults.rootDisks + currentResults.spareDisks}개
+
+용량 상세:
+- 마케팅 Raw: ${currentResults.actualRawCapacity} TB
+- Right-Sized Raw: ${currentResults.rightSizedRawCapacity} TiB
+- 실 사용 가능 (Available): ${currentResults.availableCapacity} TiB
+- 논리적 용량 (Logical): ${currentResults.logicalCapacity} TiB
+
+효율성:
+- RAID 효율: ${currentResults.raidEfficiency}%
+- 전체 효율: ${currentResults.overallEfficiency}%
+`;
+
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `NetApp_Sizing_Report_${new Date().getTime()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// 초기화
+updateDiskSizes();
+</script>
+</body>
+</html>
